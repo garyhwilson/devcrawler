@@ -103,7 +103,6 @@ function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), 
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 // src/game/dungeon/Corridor.js
-
 var Corridor = /*#__PURE__*/function () {
   function Corridor(startX, startY, endX, endY) {
     _classCallCheck(this, Corridor);
@@ -164,22 +163,6 @@ var Corridor = /*#__PURE__*/function () {
         }
       }
     }
-
-    // Get the first few points of the path
-  }, {
-    key: "getStartPoints",
-    value: function getStartPoints() {
-      var count = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 3;
-      return this.path.slice(0, count);
-    }
-
-    // Get the last few points of the path
-  }, {
-    key: "getEndPoints",
-    value: function getEndPoints() {
-      var count = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 3;
-      return this.path.slice(-count);
-    }
   }]);
 }();
 
@@ -198,6 +181,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _Room_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Room.js */ "./src/game/dungeon/Room.js");
 /* harmony import */ var _Corridor_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Corridor.js */ "./src/game/dungeon/Corridor.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -279,27 +266,313 @@ var DungeonGenerator = /*#__PURE__*/function () {
   }, {
     key: "connectRooms",
     value: function connectRooms() {
+      var _this2 = this;
       var sortedRooms = _toConsumableArray(this.rooms).sort(function (a, b) {
         return a.x - b.x;
       });
       for (var i = 0; i < sortedRooms.length - 1; i++) {
         var roomA = sortedRooms[i];
         var roomB = sortedRooms[i + 1];
-        var centerA = roomA.getCenter();
-        var centerB = roomB.getCenter();
-        var corridor = new _Corridor_js__WEBPACK_IMPORTED_MODULE_1__.Corridor(centerA.x, centerA.y, centerB.x, centerB.y);
+        var connection = this.findBestConnection(roomA, roomB);
+        if (!connection) continue;
+        var corridor = connection.corridor,
+          doorPoints = connection.doorPoints;
+
+        // Add corridor and doors
         this.corridors.push(corridor);
+        doorPoints.forEach(function (point) {
+          _this2.grid[point.y][point.x] = 2; // door
+        });
       }
+    }
+  }, {
+    key: "findBestConnection",
+    value: function findBestConnection(roomA, roomB) {
+      var _this3 = this;
+      // Try different connection strategies
+      var strategies = [{
+        dx: 0,
+        dy: 0
+      },
+      // Direct
+      {
+        dx: 0,
+        dy: 1
+      },
+      // Offset up
+      {
+        dx: 0,
+        dy: -1
+      },
+      // Offset down
+      {
+        dx: 1,
+        dy: 0
+      },
+      // Offset right
+      {
+        dx: -1,
+        dy: 0
+      } // Offset left
+      ];
+      for (var _i = 0, _strategies = strategies; _i < _strategies.length; _i++) {
+        var _strategies$_i = _strategies[_i],
+          dx = _strategies$_i.dx,
+          dy = _strategies$_i.dy;
+        // Find potential connection points
+        var startPoint = this.findConnectionPoint(roomA, roomB, dx, dy);
+        var endPoint = this.findConnectionPoint(roomB, roomA, -dx, -dy);
+
+        // Create and validate corridor
+        var corridor = new _Corridor_js__WEBPACK_IMPORTED_MODULE_1__.Corridor(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+
+        // Remove room intersections
+        corridor.path = corridor.path.filter(function (point) {
+          return !_this3.isPointInAnyRoom(point.x, point.y);
+        });
+
+        // Validate corridor
+        if (corridor.path.length >= 4 && this.isValidCorridor(corridor)) {
+          // Find door placement points
+          var doorPoints = this.getDoorPoints(corridor, roomA, roomB);
+          if (doorPoints.length === 2) {
+            // Ensure exactly two doors
+            return {
+              corridor: corridor,
+              doorPoints: doorPoints
+            };
+          }
+        }
+      }
+      return null;
+    }
+  }, {
+    key: "findConnectionPoint",
+    value: function findConnectionPoint(room, targetRoom, offsetX, offsetY) {
+      var roomCenter = room.getCenter();
+      var targetCenter = targetRoom.getCenter();
+
+      // Determine which edge to use based on relative position
+      var x, y;
+      if (roomCenter.x < targetCenter.x) {
+        x = room.x + room.width - 1; // Right edge
+      } else {
+        x = room.x; // Left edge
+      }
+      if (roomCenter.y < targetCenter.y) {
+        y = room.y + room.height - 1; // Bottom edge
+      } else {
+        y = room.y; // Top edge
+      }
+
+      // Apply offset
+      x += offsetX;
+      y += offsetY;
+      return {
+        x: x,
+        y: y
+      };
+    }
+  }, {
+    key: "isValidCorridor",
+    value: function isValidCorridor(corridor) {
+      // Check minimum length
+      if (corridor.path.length < 4) return false;
+
+      // Check for nearby doors or other corridors
+      var _iterator2 = _createForOfIteratorHelper(corridor.path),
+        _step2;
+      try {
+        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+          var point = _step2.value;
+          var neighbors = this.getAdjacentPoints(point);
+          var _iterator3 = _createForOfIteratorHelper(neighbors),
+            _step3;
+          try {
+            for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+              var neighbor = _step3.value;
+              // Check if neighbor is a door or part of another corridor
+              if (this.grid[neighbor.y][neighbor.x] === 2) return false;
+            }
+          } catch (err) {
+            _iterator3.e(err);
+          } finally {
+            _iterator3.f();
+          }
+        }
+      } catch (err) {
+        _iterator2.e(err);
+      } finally {
+        _iterator2.f();
+      }
+      return true;
+    }
+  }, {
+    key: "findDoorPlacementPoints",
+    value: function findDoorPlacementPoints(corridor) {
+      var doorPoints = [];
+
+      // Check start of corridor
+      var startSegment = corridor.path.slice(0, 3);
+      var validStart = this.isValidDoorPlacement(startSegment[1], corridor);
+      if (validStart) {
+        doorPoints.push(startSegment[1]);
+      }
+
+      // Check end of corridor
+      var endSegment = corridor.path.slice(-3);
+      var validEnd = this.isValidDoorPlacement(endSegment[1], corridor);
+      if (validEnd) {
+        doorPoints.push(endSegment[1]);
+      }
+      return doorPoints;
+    }
+  }, {
+    key: "findClosestDoorPoint",
+    value: function findClosestDoorPoint(roomA, roomB) {
+      // Find the edge of roomA that's closest to roomB
+      var centerA = roomA.getCenter();
+      var centerB = roomB.getCenter();
+      var x, y;
+      if (centerA.x < centerB.x) {
+        x = roomA.x + roomA.width - 1; // Right edge
+      } else {
+        x = roomA.x; // Left edge
+      }
+      if (centerA.y < centerB.y) {
+        y = roomA.y + roomA.height - 1; // Bottom edge
+      } else {
+        y = roomA.y; // Top edge
+      }
+      return {
+        x: x,
+        y: y
+      };
+    }
+  }, {
+    key: "isPointInAnyRoom",
+    value: function isPointInAnyRoom(x, y) {
+      return this.rooms.some(function (room) {
+        return x >= room.x && x < room.x + room.width && y >= room.y && y < room.y + room.height;
+      });
+    }
+  }, {
+    key: "getAdjacentPoints",
+    value: function getAdjacentPoints(point) {
+      var neighbors = [];
+      var deltas = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      for (var _i2 = 0, _deltas = deltas; _i2 < _deltas.length; _i2++) {
+        var _deltas$_i = _slicedToArray(_deltas[_i2], 2),
+          dx = _deltas$_i[0],
+          dy = _deltas$_i[1];
+        var x = point.x + dx;
+        var y = point.y + dy;
+        if (this.isInBounds(x, y)) {
+          neighbors.push({
+            x: x,
+            y: y
+          });
+        }
+      }
+      return neighbors;
+    }
+  }, {
+    key: "getDoorPoints",
+    value: function getDoorPoints(corridor, roomA, roomB) {
+      var doorPoints = [];
+
+      // Check first and last points of corridor
+      var start = corridor.path[0];
+      var end = corridor.path[corridor.path.length - 1];
+
+      // Only add door points that are actually connecting to rooms
+      if (this.isAdjacentToRoom(start, roomA)) doorPoints.push(start);
+      if (this.isAdjacentToRoom(end, roomB)) doorPoints.push(end);
+      return doorPoints;
+    }
+  }, {
+    key: "isAdjacentToRoom",
+    value: function isAdjacentToRoom(point, room) {
+      return point.x >= room.x - 1 && point.x <= room.x + room.width && point.y >= room.y - 1 && point.y <= room.y + room.height;
+    }
+  }, {
+    key: "isValidDoorPlacement",
+    value: function isValidDoorPlacement(point, corridor) {
+      // Check if there's enough space around the door
+      var neighboringCells = [{
+        x: point.x - 1,
+        y: point.y
+      }, {
+        x: point.x + 1,
+        y: point.y
+      }, {
+        x: point.x,
+        y: point.y - 1
+      }, {
+        x: point.x,
+        y: point.y + 1
+      }];
+
+      // Count how many corridor cells are adjacent
+      var corridorNeighbors = neighboringCells.filter(function (cell) {
+        return corridor.path.some(function (p) {
+          return p.x === cell.x && p.y === cell.y;
+        });
+      });
+
+      // Only place door if it connects exactly two spaces
+      // (one corridor side and one room side)
+      return corridorNeighbors.length === 1;
+    }
+  }, {
+    key: "assignRoomTypes",
+    value: function assignRoomTypes() {
+      // Sort rooms by size
+      var sortedRooms = _toConsumableArray(this.rooms).sort(function (a, b) {
+        return b.width * b.height - a.width * a.height;
+      });
+
+      // Assign types based on size and position
+      sortedRooms[0].setType(RoomType.LARGE_HALL);
+
+      // Find the room closest to top-left for entrance
+      var topLeftRoom = this.rooms.reduce(function (closest, room) {
+        var distance = Math.sqrt(room.x * room.x + room.y * room.y);
+        if (!closest || distance < Math.sqrt(closest.x * closest.x + closest.y * closest.y)) {
+          return room;
+        }
+        return closest;
+      });
+      topLeftRoom.setType(RoomType.ENTRANCE);
+
+      // Find the room farthest from entrance for boss
+      var farthestRoom = this.rooms.reduce(function (farthest, room) {
+        var distance = Math.sqrt(Math.pow(room.x - topLeftRoom.x, 2) + Math.pow(room.y - topLeftRoom.y, 2));
+        if (!farthest || distance > Math.sqrt(Math.pow(farthest.x - topLeftRoom.x, 2) + Math.pow(farthest.y - topLeftRoom.y, 2))) {
+          return room;
+        }
+        return farthest;
+      });
+      farthestRoom.setType(RoomType.BOSS);
+
+      // Assign remaining rooms randomly
+      var remainingTypes = [RoomType.STORAGE, RoomType.TREASURE, RoomType.STANDARD];
+      this.rooms.forEach(function (room) {
+        if (!room.type || room.type === RoomType.STANDARD) {
+          var randomType = remainingTypes[Math.floor(Math.random() * remainingTypes.length)];
+          room.setType(randomType);
+        }
+      });
     }
   }, {
     key: "applyToGrid",
     value: function applyToGrid() {
       // First pass: Apply rooms
-      var _iterator2 = _createForOfIteratorHelper(this.rooms),
-        _step2;
+      var _iterator4 = _createForOfIteratorHelper(this.rooms),
+        _step4;
       try {
-        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-          var room = _step2.value;
+        for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+          var room = _step4.value;
           for (var _y = room.y; _y < room.y + room.height; _y++) {
             for (var _x = room.x; _x < room.x + room.width; _x++) {
               if (this.isInBounds(_x, _y)) {
@@ -311,36 +584,36 @@ var DungeonGenerator = /*#__PURE__*/function () {
 
         // Second pass: Apply corridors
       } catch (err) {
-        _iterator2.e(err);
+        _iterator4.e(err);
       } finally {
-        _iterator2.f();
+        _iterator4.f();
       }
-      var _iterator3 = _createForOfIteratorHelper(this.corridors),
-        _step3;
+      var _iterator5 = _createForOfIteratorHelper(this.corridors),
+        _step5;
       try {
-        for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-          var corridor = _step3.value;
-          var _iterator4 = _createForOfIteratorHelper(corridor.path),
-            _step4;
+        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+          var corridor = _step5.value;
+          var _iterator6 = _createForOfIteratorHelper(corridor.path),
+            _step6;
           try {
-            for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
-              var point = _step4.value;
+            for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+              var point = _step6.value;
               if (this.isInBounds(point.x, point.y)) {
                 this.grid[point.y][point.x] = 1; // floor
               }
             }
           } catch (err) {
-            _iterator4.e(err);
+            _iterator6.e(err);
           } finally {
-            _iterator4.f();
+            _iterator6.f();
           }
         }
 
         // Third pass: Add walls
       } catch (err) {
-        _iterator3.e(err);
+        _iterator5.e(err);
       } finally {
-        _iterator3.f();
+        _iterator5.f();
       }
       var tempGrid = this.grid.map(function (row) {
         return _toConsumableArray(row);
@@ -363,24 +636,24 @@ var DungeonGenerator = /*#__PURE__*/function () {
   }, {
     key: "placeDoors",
     value: function placeDoors() {
-      var _iterator5 = _createForOfIteratorHelper(this.corridors),
-        _step5;
+      var _iterator7 = _createForOfIteratorHelper(this.corridors),
+        _step7;
       try {
-        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-          var corridor = _step5.value;
+        for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+          var corridor = _step7.value;
           var startSection = corridor.path.slice(1, 4);
           var endSection = corridor.path.slice(-4, -1);
-          for (var _i = 0, _arr = [].concat(_toConsumableArray(startSection), _toConsumableArray(endSection)); _i < _arr.length; _i++) {
-            var point = _arr[_i];
+          for (var _i3 = 0, _arr = [].concat(_toConsumableArray(startSection), _toConsumableArray(endSection)); _i3 < _arr.length; _i3++) {
+            var point = _arr[_i3];
             if (this.shouldPlaceDoor(point.x, point.y)) {
               this.grid[point.y][point.x] = 2; // door tile value
             }
           }
         }
       } catch (err) {
-        _iterator5.e(err);
+        _iterator7.e(err);
       } finally {
-        _iterator5.f();
+        _iterator7.f();
       }
     }
   }, {
@@ -1115,11 +1388,15 @@ var GameManager = /*#__PURE__*/function () {
       this.lastFrameTime = 0;
       this.frameCount = 0;
 
-      // Player position - will be set after dungeon generation
+      // Player state
       this.playerPos = {
         x: 0,
         y: 0
       };
+      this.playerFacing = {
+        x: 0,
+        y: -1
+      }; // Initially facing north
 
       // Generate initial dungeon and place player
       this.generateNewDungeon();
@@ -1343,28 +1620,46 @@ var GameManager = /*#__PURE__*/function () {
     key: "handleKeyDown",
     value: function handleKeyDown(event) {
       if (event.code === 'KeyE') {
-        this.tryToggleNearbyDoor();
+        this.tryToggleDoorInFacingDirection();
         event.preventDefault();
         return;
       }
       var newX = this.playerPos.x;
       var newY = this.playerPos.y;
+      var newFacingX = 0;
+      var newFacingY = 0;
+
+      // Determine facing direction based on key
       switch (event.code) {
         case 'ArrowUp':
           newY--;
+          newFacingX = 0;
+          newFacingY = -1;
           break;
         case 'ArrowDown':
           newY++;
+          newFacingX = 0;
+          newFacingY = 1;
           break;
         case 'ArrowLeft':
           newX--;
+          newFacingX = -1;
+          newFacingY = 0;
           break;
         case 'ArrowRight':
           newX++;
+          newFacingX = 1;
+          newFacingY = 0;
           break;
         default:
           return;
       }
+
+      // Always update facing direction
+      this.playerFacing.x = newFacingX;
+      this.playerFacing.y = newFacingY;
+
+      // Attempt movement if possible
       if (this.gridManager.canMoveTo(newX, newY)) {
         this.playerPos.x = newX;
         this.playerPos.y = newY;
@@ -1374,26 +1669,16 @@ var GameManager = /*#__PURE__*/function () {
       event.preventDefault();
     }
   }, {
-    key: "tryToggleNearbyDoor",
-    value: function tryToggleNearbyDoor() {
-      var neighbors = this.gridManager.getNeighbors(this.playerPos.x, this.playerPos.y, true // include diagonals
-      );
-      var _iterator5 = _createForOfIteratorHelper(neighbors),
-        _step5;
-      try {
-        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-          var cell = _step5.value;
-          if (cell.isDoor) {
-            if (cell.toggleDoor()) {
-              this.updateVisibility();
-              return true;
-            }
-          }
+    key: "tryToggleDoorInFacingDirection",
+    value: function tryToggleDoorInFacingDirection() {
+      var facingX = this.playerPos.x + this.playerFacing.x;
+      var facingY = this.playerPos.y + this.playerFacing.y;
+      var facingCell = this.gridManager.getCell(facingX, facingY);
+      if (facingCell && facingCell.isDoor) {
+        if (facingCell.toggleDoor()) {
+          this.updateVisibility();
+          return true;
         }
-      } catch (err) {
-        _iterator5.e(err);
-      } finally {
-        _iterator5.f();
       }
       return false;
     }
@@ -1414,6 +1699,7 @@ var GameManager = /*#__PURE__*/function () {
           if (!cell.visible) {
             fillColor = '#1a1a1a';
           } else {
+            var roomType = this.roomTypes.get("".concat(x, ",").concat(y));
             switch (cell.type) {
               case 'wall':
                 fillColor = _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.wall;
@@ -1422,9 +1708,11 @@ var GameManager = /*#__PURE__*/function () {
                 fillColor = cell.isOpen ? _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.door.open : _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.door.closed;
                 break;
               case 'floor':
-                // Get room type for this cell
-                var roomType = this.roomTypes.get("".concat(x, ",").concat(y));
-                fillColor = _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors[roomType] || _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors[_dungeon_Room_js__WEBPACK_IMPORTED_MODULE_3__.RoomType.STANDARD];
+                if (roomType === 'corridor') {
+                  fillColor = _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.corridor;
+                } else {
+                  fillColor = _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors[roomType] || _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors[_dungeon_Room_js__WEBPACK_IMPORTED_MODULE_3__.RoomType.STANDARD];
+                }
                 break;
             }
           }
@@ -1442,8 +1730,21 @@ var GameManager = /*#__PURE__*/function () {
     value: function renderPlayer() {
       var screenPos = this.camera.worldToScreen(this.playerPos.x, this.playerPos.y);
       var tileSize = this.gridManager.tileSize;
+
+      // Draw player base
       this.ctx.fillStyle = '#ff0';
       this.ctx.fillRect(screenPos.x + 2, screenPos.y + 2, tileSize - 4, tileSize - 4);
+
+      // Draw direction indicator
+      this.ctx.fillStyle = '#f00';
+      var indicatorSize = tileSize / 3;
+      var centerX = screenPos.x + tileSize / 2;
+      var centerY = screenPos.y + tileSize / 2;
+      var indicatorX = centerX + this.playerFacing.x * (tileSize / 4);
+      var indicatorY = centerY + this.playerFacing.y * (tileSize / 4);
+      this.ctx.beginPath();
+      this.ctx.arc(indicatorX, indicatorY, indicatorSize / 2, 0, Math.PI * 2);
+      this.ctx.fill();
     }
   }, {
     key: "gameLoop",

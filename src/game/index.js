@@ -56,8 +56,9 @@ class GameManager {
       this.lastFrameTime = 0;
       this.frameCount = 0;
 
-      // Player position - will be set after dungeon generation
+      // Player state
       this.playerPos = { x: 0, y: 0 };
+      this.playerFacing = { x: 0, y: -1 }; // Initially facing north
 
       // Generate initial dungeon and place player
       this.generateNewDungeon();
@@ -248,22 +249,47 @@ class GameManager {
 
   handleKeyDown(event) {
     if (event.code === 'KeyE') {
-      this.tryToggleNearbyDoor();
+      this.tryToggleDoorInFacingDirection();
       event.preventDefault();
       return;
     }
 
     let newX = this.playerPos.x;
     let newY = this.playerPos.y;
+    let newFacingX = 0;
+    let newFacingY = 0;
 
+    // Determine facing direction based on key
     switch (event.code) {
-      case 'ArrowUp': newY--; break;
-      case 'ArrowDown': newY++; break;
-      case 'ArrowLeft': newX--; break;
-      case 'ArrowRight': newX++; break;
-      default: return;
+      case 'ArrowUp':
+        newY--;
+        newFacingX = 0;
+        newFacingY = -1;
+        break;
+      case 'ArrowDown':
+        newY++;
+        newFacingX = 0;
+        newFacingY = 1;
+        break;
+      case 'ArrowLeft':
+        newX--;
+        newFacingX = -1;
+        newFacingY = 0;
+        break;
+      case 'ArrowRight':
+        newX++;
+        newFacingX = 1;
+        newFacingY = 0;
+        break;
+      default:
+        return;
     }
 
+    // Always update facing direction
+    this.playerFacing.x = newFacingX;
+    this.playerFacing.y = newFacingY;
+
+    // Attempt movement if possible
     if (this.gridManager.canMoveTo(newX, newY)) {
       this.playerPos.x = newX;
       this.playerPos.y = newY;
@@ -274,19 +300,15 @@ class GameManager {
     event.preventDefault();
   }
 
-  tryToggleNearbyDoor() {
-    const neighbors = this.gridManager.getNeighbors(
-      this.playerPos.x,
-      this.playerPos.y,
-      true // include diagonals
-    );
+  tryToggleDoorInFacingDirection() {
+    const facingX = this.playerPos.x + this.playerFacing.x;
+    const facingY = this.playerPos.y + this.playerFacing.y;
 
-    for (const cell of neighbors) {
-      if (cell.isDoor) {
-        if (cell.toggleDoor()) {
-          this.updateVisibility();
-          return true;
-        }
+    const facingCell = this.gridManager.getCell(facingX, facingY);
+    if (facingCell && facingCell.isDoor) {
+      if (facingCell.toggleDoor()) {
+        this.updateVisibility();
+        return true;
       }
     }
     return false;
@@ -309,6 +331,7 @@ class GameManager {
         if (!cell.visible) {
           fillColor = '#1a1a1a';
         } else {
+          const roomType = this.roomTypes.get(`${x},${y}`);
           switch (cell.type) {
             case 'wall':
               fillColor = RoomColors.wall;
@@ -317,9 +340,11 @@ class GameManager {
               fillColor = cell.isOpen ? RoomColors.door.open : RoomColors.door.closed;
               break;
             case 'floor':
-              // Get room type for this cell
-              const roomType = this.roomTypes.get(`${x},${y}`);
-              fillColor = RoomColors[roomType] || RoomColors[RoomType.STANDARD];
+              if (roomType === 'corridor') {
+                fillColor = RoomColors.corridor;
+              } else {
+                fillColor = RoomColors[roomType] || RoomColors[RoomType.STANDARD];
+              }
               break;
           }
         }
@@ -338,6 +363,8 @@ class GameManager {
   renderPlayer() {
     const screenPos = this.camera.worldToScreen(this.playerPos.x, this.playerPos.y);
     const tileSize = this.gridManager.tileSize;
+
+    // Draw player base
     this.ctx.fillStyle = '#ff0';
     this.ctx.fillRect(
       screenPos.x + 2,
@@ -345,6 +372,19 @@ class GameManager {
       tileSize - 4,
       tileSize - 4
     );
+
+    // Draw direction indicator
+    this.ctx.fillStyle = '#f00';
+    const indicatorSize = tileSize / 3;
+    const centerX = screenPos.x + tileSize / 2;
+    const centerY = screenPos.y + tileSize / 2;
+
+    const indicatorX = centerX + (this.playerFacing.x * (tileSize / 4));
+    const indicatorY = centerY + (this.playerFacing.y * (tileSize / 4));
+
+    this.ctx.beginPath();
+    this.ctx.arc(indicatorX, indicatorY, indicatorSize / 2, 0, Math.PI * 2);
+    this.ctx.fill();
   }
 
   gameLoop(timestamp) {

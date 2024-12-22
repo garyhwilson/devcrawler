@@ -1,5 +1,4 @@
 // src/game/dungeon/Corridor.js
-
 export class Corridor {
   constructor(startX, startY, endX, endY) {
     this.startX = startX;
@@ -44,15 +43,5 @@ export class Corridor {
         this.path.push({ x: currentX, y: currentY });
       }
     }
-  }
-
-  // Get the first few points of the path
-  getStartPoints(count = 3) {
-    return this.path.slice(0, count);
-  }
-
-  // Get the last few points of the path
-  getEndPoints(count = 3) {
-    return this.path.slice(-count);
   }
 }
