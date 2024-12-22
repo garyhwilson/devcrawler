@@ -1,4 +1,5 @@
 // src/game/grid/GridManager.js
+
 import { GridCell } from './GridCell.js';
 
 export class GridManager {
@@ -33,6 +34,12 @@ export class GridManager {
   canMoveTo(x, y) {
     const cell = this.getCell(x, y);
     if (!cell) return false;
+
+    // Check if it's a door and it's closed
+    if (cell.isDoor && !cell.isOpen) {
+      return false;
+    }
+
     return cell.walkable && !cell.hasBlockingEntity();
   }
 

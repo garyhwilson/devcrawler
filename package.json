@@ -9,9 +9,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:devcrawler.start"
-  ],
   "main": "./src/extension.js",
   "contributes": {
     "commands": [
