@@ -622,6 +622,32 @@ var Room = /*#__PURE__*/function () {
 
 /***/ }),
 
+/***/ "./src/game/dungeon/RoomColors.js":
+/*!****************************************!*\
+  !*** ./src/game/dungeon/RoomColors.js ***!
+  \****************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   RoomColors: () => (/* binding */ RoomColors)
+/* harmony export */ });
+/* harmony import */ var _Room_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Room.js */ "./src/game/dungeon/Room.js");
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+// src/game/dungeon/RoomColors.js
+
+
+var RoomColors = _defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty({}, _Room_js__WEBPACK_IMPORTED_MODULE_0__.RoomType.STANDARD, '#444'), _Room_js__WEBPACK_IMPORTED_MODULE_0__.RoomType.ENTRANCE, '#4a9'), _Room_js__WEBPACK_IMPORTED_MODULE_0__.RoomType.LARGE_HALL, '#66a'), _Room_js__WEBPACK_IMPORTED_MODULE_0__.RoomType.BOSS, '#a44'), _Room_js__WEBPACK_IMPORTED_MODULE_0__.RoomType.STORAGE, '#974'), _Room_js__WEBPACK_IMPORTED_MODULE_0__.RoomType.TREASURE, '#aa4'), 'corridor', '#335'), 'wall', '#666'), 'door', {
+  'open': '#4a2',
+  // Green
+  'closed': '#8b4513' // Brown
+});
+
+/***/ }),
+
 /***/ "./src/game/grid/GridCell.js":
 /*!***********************************!*\
   !*** ./src/game/grid/GridCell.js ***!
@@ -1023,16 +1049,24 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _grid_GridManager_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./grid/GridManager.js */ "./src/game/grid/GridManager.js");
 /* harmony import */ var _dungeon_DungeonGenerator_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./dungeon/DungeonGenerator.js */ "./src/game/dungeon/DungeonGenerator.js");
 /* harmony import */ var _Camera_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Camera.js */ "./src/game/Camera.js");
+/* harmony import */ var _dungeon_Room_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./dungeon/Room.js */ "./src/game/dungeon/Room.js");
+/* harmony import */ var _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./dungeon/RoomColors.js */ "./src/game/dungeon/RoomColors.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 // src/game/index.js
+
+
 
 
 
@@ -1074,6 +1108,9 @@ var GameManager = /*#__PURE__*/function () {
       // Create dungeon generator
       this.dungeonGenerator = new _dungeon_DungeonGenerator_js__WEBPACK_IMPORTED_MODULE_1__.DungeonGenerator(GRID_WIDTH, GRID_HEIGHT);
 
+      // Initialize room type tracking
+      this.roomTypes = new Map(); // Stores coordinates -> room type
+
       // Set up game state
       this.lastFrameTime = 0;
       this.frameCount = 0;
@@ -1100,6 +1137,9 @@ var GameManager = /*#__PURE__*/function () {
         }
       });
 
+      // Add legend
+      this.addLegend();
+
       // Start game loop
       console.log('Starting game loop...');
       this.gameLoop(0);
@@ -1118,12 +1158,90 @@ var GameManager = /*#__PURE__*/function () {
     }
   }
   return _createClass(GameManager, [{
+    key: "addLegend",
+    value: function addLegend() {
+      var legend = document.createElement('div');
+      legend.style.position = 'absolute';
+      legend.style.top = '10px';
+      legend.style.right = '10px';
+      legend.style.color = 'white';
+      legend.style.fontFamily = 'monospace';
+      legend.style.fontSize = '14px';
+      legend.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+      legend.style.padding = '10px';
+      legend.style.borderRadius = '5px';
+      var legendHTML = '<div style="text-align: left; font-weight: bold;">Room Types:</div>';
+
+      // Add each room type to the legend
+      Object.entries(_dungeon_Room_js__WEBPACK_IMPORTED_MODULE_3__.RoomType).forEach(function (_ref) {
+        var _ref2 = _slicedToArray(_ref, 2),
+          key = _ref2[0],
+          value = _ref2[1];
+        var color = _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors[value];
+        legendHTML += "\n          <div style=\"display: flex; align-items: center; margin: 5px 0;\">\n              <div style=\"width: 20px; height: 20px; background-color: ".concat(color, "; margin-right: 10px; border: 1px solid #666;\"></div>\n              <span>").concat(key.charAt(0) + key.slice(1).toLowerCase().replace('_', ' '), "</span>\n          </div>");
+      });
+
+      // Add corridor
+      legendHTML += "\n      <div style=\"display: flex; align-items: center; margin: 5px 0;\">\n          <div style=\"width: 20px; height: 20px; background-color: ".concat(_dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.corridor, "; margin-right: 10px; border: 1px solid #666;\"></div>\n          <span>Corridor</span>\n      </div>");
+
+      // Add doors
+      legendHTML += "\n      <div style=\"display: flex; align-items: center; margin: 5px 0;\">\n          <div style=\"width: 20px; height: 20px; background-color: ".concat(_dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.door.closed, "; margin-right: 10px; border: 1px solid #666;\"></div>\n          <span>Door (Closed)</span>\n      </div>\n      <div style=\"display: flex; align-items: center; margin: 5px 0;\">\n          <div style=\"width: 20px; height: 20px; background-color: ").concat(_dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.door.open, "; margin-right: 10px; border: 1px solid #666;\"></div>\n          <span>Door (Open)</span>\n      </div>");
+      legend.innerHTML = legendHTML;
+      document.getElementById('gameContainer').appendChild(legend);
+    }
+  }, {
     key: "generateNewDungeon",
     value: function generateNewDungeon() {
+      /// Clear existing room type tracking
+      this.roomTypes.clear();
+
       // Generate new dungeon layout
       var dungeon = this.dungeonGenerator.generate();
 
-      // Clear existing grid
+      // Store room types for each cell
+      var _iterator = _createForOfIteratorHelper(dungeon.rooms),
+        _step;
+      try {
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var room = _step.value;
+          for (var _y = room.y; _y < room.y + room.height; _y++) {
+            for (var _x = room.x; _x < room.x + room.width; _x++) {
+              this.roomTypes.set("".concat(_x, ",").concat(_y), room.type);
+            }
+          }
+        }
+
+        // Store corridor locations
+      } catch (err) {
+        _iterator.e(err);
+      } finally {
+        _iterator.f();
+      }
+      var _iterator2 = _createForOfIteratorHelper(dungeon.corridors),
+        _step2;
+      try {
+        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+          var corridor = _step2.value;
+          var _iterator3 = _createForOfIteratorHelper(corridor.path),
+            _step3;
+          try {
+            for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+              var point = _step3.value;
+              this.roomTypes.set("".concat(point.x, ",").concat(point.y), 'corridor');
+            }
+          } catch (err) {
+            _iterator3.e(err);
+          } finally {
+            _iterator3.f();
+          }
+        }
+
+        // Clear existing grid
+      } catch (err) {
+        _iterator2.e(err);
+      } finally {
+        _iterator2.f();
+      }
       this.gridManager.clear();
 
       // Apply dungeon to grid
@@ -1189,20 +1307,20 @@ var GameManager = /*#__PURE__*/function () {
     value: function updateVisibility() {
       this.gridManager.resetVisibility();
       var visibleCells = this.gridManager.getCellsInRange(this.playerPos.x, this.playerPos.y, 5);
-      var _iterator = _createForOfIteratorHelper(visibleCells),
-        _step;
+      var _iterator4 = _createForOfIteratorHelper(visibleCells),
+        _step4;
       try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var cell = _step.value;
+        for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+          var cell = _step4.value;
           if (this.gridManager.hasLineOfSight(this.playerPos.x, this.playerPos.y, cell.x, cell.y)) {
             cell.visible = true;
             cell.explored = true;
           }
         }
       } catch (err) {
-        _iterator.e(err);
+        _iterator4.e(err);
       } finally {
-        _iterator.f();
+        _iterator4.f();
       }
     }
   }, {
@@ -1260,11 +1378,11 @@ var GameManager = /*#__PURE__*/function () {
     value: function tryToggleNearbyDoor() {
       var neighbors = this.gridManager.getNeighbors(this.playerPos.x, this.playerPos.y, true // include diagonals
       );
-      var _iterator2 = _createForOfIteratorHelper(neighbors),
-        _step2;
+      var _iterator5 = _createForOfIteratorHelper(neighbors),
+        _step5;
       try {
-        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-          var cell = _step2.value;
+        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+          var cell = _step5.value;
           if (cell.isDoor) {
             if (cell.toggleDoor()) {
               this.updateVisibility();
@@ -1273,9 +1391,9 @@ var GameManager = /*#__PURE__*/function () {
           }
         }
       } catch (err) {
-        _iterator2.e(err);
+        _iterator5.e(err);
       } finally {
-        _iterator2.f();
+        _iterator5.f();
       }
       return false;
     }
@@ -1298,13 +1416,15 @@ var GameManager = /*#__PURE__*/function () {
           } else {
             switch (cell.type) {
               case 'wall':
-                fillColor = '#666';
+                fillColor = _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.wall;
                 break;
               case 'door':
-                fillColor = cell.isOpen ? '#4a2' : '#8b4513';
+                fillColor = cell.isOpen ? _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.door.open : _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors.door.closed;
                 break;
               case 'floor':
-                fillColor = '#444';
+                // Get room type for this cell
+                var roomType = this.roomTypes.get("".concat(x, ",").concat(y));
+                fillColor = _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors[roomType] || _dungeon_RoomColors_js__WEBPACK_IMPORTED_MODULE_4__.RoomColors[_dungeon_Room_js__WEBPACK_IMPORTED_MODULE_3__.RoomType.STANDARD];
                 break;
             }
           }

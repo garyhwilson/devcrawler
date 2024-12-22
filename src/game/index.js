@@ -3,6 +3,8 @@
 import { GridManager } from './grid/GridManager.js';
 import { DungeonGenerator } from './dungeon/DungeonGenerator.js';
 import { Camera } from './Camera.js';
+import { RoomType } from './dungeon/Room.js';
+import { RoomColors } from './dungeon/RoomColors.js';
 
 class GameManager {
   constructor() {
@@ -47,6 +49,9 @@ class GameManager {
       // Create dungeon generator
       this.dungeonGenerator = new DungeonGenerator(GRID_WIDTH, GRID_HEIGHT);
 
+      // Initialize room type tracking
+      this.roomTypes = new Map(); // Stores coordinates -> room type
+
       // Set up game state
       this.lastFrameTime = 0;
       this.frameCount = 0;
@@ -70,6 +75,9 @@ class GameManager {
         }
       });
 
+      // Add legend
+      this.addLegend();
+
       // Start game loop
       console.log('Starting game loop...');
       this.gameLoop(0);
@@ -89,9 +97,74 @@ class GameManager {
     }
   }
 
+  addLegend() {
+    const legend = document.createElement('div');
+    legend.style.position = 'absolute';
+    legend.style.top = '10px';
+    legend.style.right = '10px';
+    legend.style.color = 'white';
+    legend.style.fontFamily = 'monospace';
+    legend.style.fontSize = '14px';
+    legend.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    legend.style.padding = '10px';
+    legend.style.borderRadius = '5px';
+
+    let legendHTML = '<div style="text-align: left; font-weight: bold;">Room Types:</div>';
+
+    // Add each room type to the legend
+    Object.entries(RoomType).forEach(([key, value]) => {
+      const color = RoomColors[value];
+      legendHTML += `
+          <div style="display: flex; align-items: center; margin: 5px 0;">
+              <div style="width: 20px; height: 20px; background-color: ${color}; margin-right: 10px; border: 1px solid #666;"></div>
+              <span>${key.charAt(0) + key.slice(1).toLowerCase().replace('_', ' ')}</span>
+          </div>`;
+    });
+
+    // Add corridor
+    legendHTML += `
+      <div style="display: flex; align-items: center; margin: 5px 0;">
+          <div style="width: 20px; height: 20px; background-color: ${RoomColors.corridor}; margin-right: 10px; border: 1px solid #666;"></div>
+          <span>Corridor</span>
+      </div>`;
+
+    // Add doors
+    legendHTML += `
+      <div style="display: flex; align-items: center; margin: 5px 0;">
+          <div style="width: 20px; height: 20px; background-color: ${RoomColors.door.closed}; margin-right: 10px; border: 1px solid #666;"></div>
+          <span>Door (Closed)</span>
+      </div>
+      <div style="display: flex; align-items: center; margin: 5px 0;">
+          <div style="width: 20px; height: 20px; background-color: ${RoomColors.door.open}; margin-right: 10px; border: 1px solid #666;"></div>
+          <span>Door (Open)</span>
+      </div>`;
+
+    legend.innerHTML = legendHTML;
+    document.getElementById('gameContainer').appendChild(legend);
+  }
+
   generateNewDungeon() {
+    /// Clear existing room type tracking
+    this.roomTypes.clear();
+
     // Generate new dungeon layout
     const dungeon = this.dungeonGenerator.generate();
+
+    // Store room types for each cell
+    for (const room of dungeon.rooms) {
+      for (let y = room.y; y < room.y + room.height; y++) {
+        for (let x = room.x; x < room.x + room.width; x++) {
+          this.roomTypes.set(`${x},${y}`, room.type);
+        }
+      }
+    }
+
+    // Store corridor locations
+    for (const corridor of dungeon.corridors) {
+      for (const point of corridor.path) {
+        this.roomTypes.set(`${point.x},${point.y}`, 'corridor');
+      }
+    }
 
     // Clear existing grid
     this.gridManager.clear();
@@ -238,13 +311,15 @@ class GameManager {
         } else {
           switch (cell.type) {
             case 'wall':
-              fillColor = '#666';
+              fillColor = RoomColors.wall;
               break;
             case 'door':
-              fillColor = cell.isOpen ? '#4a2' : '#8b4513';
+              fillColor = cell.isOpen ? RoomColors.door.open : RoomColors.door.closed;
               break;
             case 'floor':
-              fillColor = '#444';
+              // Get room type for this cell
+              const roomType = this.roomTypes.get(`${x},${y}`);
+              fillColor = RoomColors[roomType] || RoomColors[RoomType.STANDARD];
               break;
           }
         }
