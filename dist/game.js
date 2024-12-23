@@ -150,7 +150,8 @@ var Corridor = /*#__PURE__*/function () {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   DungeonGenerator: () => (/* binding */ DungeonGenerator)
+/* harmony export */   DungeonGenerator: () => (/* binding */ DungeonGenerator),
+/* harmony export */   RoomType: () => (/* binding */ RoomType)
 /* harmony export */ });
 /* harmony import */ var _Room_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Room.js */ "./src/game/dungeon/Room.js");
 /* harmony import */ var _Corridor_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Corridor.js */ "./src/game/dungeon/Corridor.js");
@@ -178,6 +179,14 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
 
 
 
+var RoomType = {
+  STANDARD: 'standard',
+  ENTRANCE: 'entrance',
+  LARGE_HALL: 'largeHall',
+  BOSS: 'boss',
+  STORAGE: 'storage',
+  TREASURE: 'treasure'
+};
 var DungeonGenerator = /*#__PURE__*/function () {
   function DungeonGenerator(width, height) {
     _classCallCheck(this, DungeonGenerator);
@@ -193,52 +202,166 @@ var DungeonGenerator = /*#__PURE__*/function () {
     key: "generate",
     value: function generate() {
       var _this = this;
-      this.rooms = [];
-      this.corridors = [];
-      this.grid = Array(this.height).fill().map(function () {
-        return Array(_this.width).fill(0);
-      });
-      this.generateRooms();
-      this.connectRooms();
-      this.applyToGrid();
-      return {
-        grid: this.grid,
-        rooms: this.rooms,
-        corridors: this.corridors
-      };
+      var maxAttempts = 5;
+      var attempts = 0;
+      while (attempts < maxAttempts) {
+        this.rooms = [];
+        this.corridors = [];
+        this.grid = Array(this.height).fill().map(function () {
+          return Array(_this.width).fill(0);
+        });
+        if (this.generateRooms()) {
+          this.connectRooms();
+          this.assignRoomTypes();
+          this.applyToGrid();
+          return {
+            grid: this.grid,
+            rooms: this.rooms,
+            corridors: this.corridors
+          };
+        }
+        attempts++;
+      }
+      throw new Error('Failed to generate dungeon with minimum required rooms after multiple attempts');
     }
   }, {
     key: "generateRooms",
     value: function generateRooms() {
-      var attempts = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 50;
-      for (var i = 0; i < attempts; i++) {
-        var minSize = 5;
-        var maxSize = 10;
-        var width = minSize + Math.floor(Math.random() * (maxSize - minSize));
-        var height = minSize + Math.floor(Math.random() * (maxSize - minSize));
-        var x = Math.floor(Math.random() * (this.width - width - 2)) + 1;
-        var y = Math.floor(Math.random() * (this.height - height - 2)) + 1;
-        var newRoom = new _Room_js__WEBPACK_IMPORTED_MODULE_0__.Room(x, y, width, height);
-        var overlaps = false;
-        var _iterator = _createForOfIteratorHelper(this.rooms),
-          _step;
-        try {
-          for (_iterator.s(); !(_step = _iterator.n()).done;) {
-            var room = _step.value;
-            if (newRoom.intersects(room, 2)) {
-              overlaps = true;
-              break;
-            }
-          }
-        } catch (err) {
-          _iterator.e(err);
-        } finally {
-          _iterator.f();
-        }
-        if (!overlaps) {
-          this.rooms.push(newRoom);
+      var minRooms = 5;
+      var maxRooms = 10;
+      var maxAttempts = 200;
+      var totalAttempts = 0;
+
+      // Clear any existing rooms
+      this.rooms = [];
+
+      // Define minimum and maximum room sizes
+      var minSize = 4; // Smaller minimum size
+      var maxSize = 6; // Smaller maximum size
+
+      // Calculate grid divisions for better room distribution
+      var gridDivisions = 3;
+      var sectionWidth = Math.floor((this.width - 10) / gridDivisions); // More padding
+      var sectionHeight = Math.floor((this.height - 10) / gridDivisions); // More padding
+
+      // Place entrance room in top-left section
+      var entranceMinSize = _Room_js__WEBPACK_IMPORTED_MODULE_0__.Room.getMinSize(RoomType.ENTRANCE);
+      var entranceRoom = new _Room_js__WEBPACK_IMPORTED_MODULE_0__.Room(2, 2, entranceMinSize.width, entranceMinSize.height);
+      entranceRoom.setType(RoomType.ENTRANCE);
+      this.rooms.push(entranceRoom);
+
+      // Create sections, excluding the entrance section
+      var sections = [];
+      for (var y = 0; y < gridDivisions; y++) {
+        for (var x = 0; x < gridDivisions; x++) {
+          sections.push({
+            x: x,
+            y: y
+          }); // Include all sections for more placement opportunities
         }
       }
+
+      // Shuffle sections for random placement order
+      sections.sort(function () {
+        return Math.random() - 0.5;
+      });
+
+      // First phase: Try to place at least one room in each section
+      for (var _i = 0, _sections = sections; _i < _sections.length; _i++) {
+        var section = _sections[_i];
+        if (this.rooms.length >= maxRooms) break;
+        var placed = false;
+        var sectionAttempts = 0;
+        var maxSectionAttempts = 20; // Increased attempts per section
+
+        while (!placed && sectionAttempts < maxSectionAttempts) {
+          var width = minSize + Math.floor(Math.random() * (Math.min(maxSize, sectionWidth - 4) - minSize));
+          var height = minSize + Math.floor(Math.random() * (Math.min(maxSize, sectionHeight - 4) - minSize));
+          var sectionX = 2 + section.x * sectionWidth;
+          var sectionY = 2 + section.y * sectionHeight;
+
+          // Add some randomness to room placement within section
+          var _x = sectionX + 2 + Math.floor(Math.random() * (sectionWidth - width - 4));
+          var _y = sectionY + 2 + Math.floor(Math.random() * (sectionHeight - height - 4));
+          var newRoom = new _Room_js__WEBPACK_IMPORTED_MODULE_0__.Room(_x, _y, width, height);
+
+          // Skip if trying to place in entrance section and not the entrance room
+          if (section.x === 0 && section.y === 0 && !newRoom.type) {
+            sectionAttempts++;
+            continue;
+          }
+          if (this.canPlaceRoom(newRoom)) {
+            this.rooms.push(newRoom);
+            placed = true;
+          }
+          sectionAttempts++;
+          totalAttempts++;
+        }
+      }
+
+      // Second phase: Keep trying to add rooms until we reach minRooms
+      while (this.rooms.length < minRooms && totalAttempts < maxAttempts) {
+        var _width = minSize + Math.floor(Math.random() * (maxSize - minSize));
+        var _height = minSize + Math.floor(Math.random() * (maxSize - minSize));
+
+        // Try to place room in any valid location
+        var _x2 = 2 + Math.floor(Math.random() * (this.width - _width - 4));
+        var _y2 = 2 + Math.floor(Math.random() * (this.height - _height - 4));
+        var _newRoom = new _Room_js__WEBPACK_IMPORTED_MODULE_0__.Room(_x2, _y2, _width, _height);
+        if (this.canPlaceRoom(_newRoom)) {
+          this.rooms.push(_newRoom);
+        }
+        totalAttempts++;
+      }
+
+      // If we still don't have minimum rooms, try one last time with smaller rooms
+      if (this.rooms.length < minRooms) {
+        for (var i = 0; i < 20 && this.rooms.length < minRooms; i++) {
+          var _width2 = 4; // Minimum size
+          var _height2 = 4; // Minimum size
+          var _x3 = 2 + Math.floor(Math.random() * (this.width - _width2 - 4));
+          var _y3 = 2 + Math.floor(Math.random() * (this.height - _height2 - 4));
+          var _newRoom2 = new _Room_js__WEBPACK_IMPORTED_MODULE_0__.Room(_x3, _y3, _width2, _height2);
+          if (this.canPlaceRoom(_newRoom2)) {
+            this.rooms.push(_newRoom2);
+          }
+        }
+      }
+      if (this.rooms.length < minRooms) {
+        console.error("Failed to generate minimum number of rooms. Got ".concat(this.rooms.length, ", needed ").concat(minRooms));
+        return false;
+      }
+      return true;
+    }
+  }, {
+    key: "canPlaceRoom",
+    value: function canPlaceRoom(newRoom) {
+      // Check bounds
+      if (!this.isRoomInBounds(newRoom)) {
+        return false;
+      }
+
+      // Check overlaps with existing rooms (including padding)
+      var _iterator = _createForOfIteratorHelper(this.rooms),
+        _step;
+      try {
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var room = _step.value;
+          if (newRoom.intersects(room, 2)) {
+            return false;
+          }
+        }
+      } catch (err) {
+        _iterator.e(err);
+      } finally {
+        _iterator.f();
+      }
+      return true;
+    }
+  }, {
+    key: "isRoomInBounds",
+    value: function isRoomInBounds(room) {
+      return room.x >= 1 && room.y >= 1 && room.x + room.width < this.width - 1 && room.y + room.height < this.height - 1;
     }
   }, {
     key: "connectRooms",
@@ -330,8 +453,8 @@ var DungeonGenerator = /*#__PURE__*/function () {
       }];
 
       // Find the point that intersects with the room
-      for (var _i = 0, _adjacentPoints = adjacentPoints; _i < _adjacentPoints.length; _i++) {
-        var point = _adjacentPoints[_i];
+      for (var _i2 = 0, _adjacentPoints = adjacentPoints; _i2 < _adjacentPoints.length; _i2++) {
+        var point = _adjacentPoints[_i2];
         if (this.isPointInRoom(point, room)) {
           return corridorPoint; // The corridor point becomes the door
         }
@@ -486,8 +609,8 @@ var DungeonGenerator = /*#__PURE__*/function () {
         dy: 0
       } // Offset left
       ];
-      for (var _i2 = 0, _strategies = strategies; _i2 < _strategies.length; _i2++) {
-        var _strategies$_i = _strategies[_i2],
+      for (var _i3 = 0, _strategies = strategies; _i3 < _strategies.length; _i3++) {
+        var _strategies$_i = _strategies[_i3],
           dx = _strategies$_i.dx,
           dy = _strategies$_i.dy;
         // Find potential connection points
@@ -632,8 +755,8 @@ var DungeonGenerator = /*#__PURE__*/function () {
     value: function getAdjacentPoints(point) {
       var neighbors = [];
       var deltas = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-      for (var _i3 = 0, _deltas = deltas; _i3 < _deltas.length; _i3++) {
-        var _deltas$_i = _slicedToArray(_deltas[_i3], 2),
+      for (var _i4 = 0, _deltas = deltas; _i4 < _deltas.length; _i4++) {
+        var _deltas$_i = _slicedToArray(_deltas[_i4], 2),
           dx = _deltas$_i[0],
           dy = _deltas$_i[1];
         var x = point.x + dx;
@@ -698,28 +821,24 @@ var DungeonGenerator = /*#__PURE__*/function () {
   }, {
     key: "assignRoomTypes",
     value: function assignRoomTypes() {
-      // Sort rooms by size
-      var sortedRooms = _toConsumableArray(this.rooms).sort(function (a, b) {
+      // Sort rooms by size (excluding the entrance room which is already assigned)
+      var sortedRooms = _toConsumableArray(this.rooms).filter(function (room) {
+        return room.type !== RoomType.ENTRANCE;
+      }).sort(function (a, b) {
         return b.width * b.height - a.width * a.height;
       });
 
       // Assign types based on size and position
       sortedRooms[0].setType(RoomType.LARGE_HALL);
 
-      // Find the room closest to top-left for entrance
-      var topLeftRoom = this.rooms.reduce(function (closest, room) {
-        var distance = Math.sqrt(room.x * room.x + room.y * room.y);
-        if (!closest || distance < Math.sqrt(closest.x * closest.x + closest.y * closest.y)) {
-          return room;
-        }
-        return closest;
-      });
-      topLeftRoom.setType(RoomType.ENTRANCE);
-
       // Find the room farthest from entrance for boss
-      var farthestRoom = this.rooms.reduce(function (farthest, room) {
-        var distance = Math.sqrt(Math.pow(room.x - topLeftRoom.x, 2) + Math.pow(room.y - topLeftRoom.y, 2));
-        if (!farthest || distance > Math.sqrt(Math.pow(farthest.x - topLeftRoom.x, 2) + Math.pow(farthest.y - topLeftRoom.y, 2))) {
+      var entranceRoom = this.rooms.find(function (room) {
+        return room.type === RoomType.ENTRANCE;
+      });
+      var farthestRoom = sortedRooms.reduce(function (farthest, room) {
+        if (room.type === RoomType.LARGE_HALL) return farthest;
+        var distance = Math.sqrt(Math.pow(room.x - entranceRoom.x, 2) + Math.pow(room.y - entranceRoom.y, 2));
+        if (!farthest || distance > Math.sqrt(Math.pow(farthest.x - entranceRoom.x, 2) + Math.pow(farthest.y - entranceRoom.y, 2))) {
           return room;
         }
         return farthest;
@@ -744,10 +863,10 @@ var DungeonGenerator = /*#__PURE__*/function () {
       try {
         for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
           var room = _step4.value;
-          for (var _y = room.y; _y < room.y + room.height; _y++) {
-            for (var _x = room.x; _x < room.x + room.width; _x++) {
-              if (this.isInBounds(_x, _y)) {
-                this.grid[_y][_x] = 1; // floor
+          for (var _y4 = room.y; _y4 < room.y + room.height; _y4++) {
+            for (var _x4 = room.x; _x4 < room.x + room.width; _x4++) {
+              if (this.isInBounds(_x4, _y4)) {
+                this.grid[_y4][_x4] = 1; // floor
               }
             }
           }

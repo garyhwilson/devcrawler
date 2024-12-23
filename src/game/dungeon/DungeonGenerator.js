@@ -3,6 +3,15 @@
 import { Room } from './Room.js';
 import { Corridor } from './Corridor.js';
 
+export const RoomType = {
+  STANDARD: 'standard',
+  ENTRANCE: 'entrance',
+  LARGE_HALL: 'largeHall',
+  BOSS: 'boss',
+  STORAGE: 'storage',
+  TREASURE: 'treasure'
+};
+
 export class DungeonGenerator {
   constructor(width, height) {
     this.width = width;
@@ -13,46 +22,166 @@ export class DungeonGenerator {
   }
 
   generate() {
-    this.rooms = [];
-    this.corridors = [];
-    this.grid = Array(this.height).fill().map(() => Array(this.width).fill(0));
+    const maxAttempts = 5;
+    let attempts = 0;
 
-    this.generateRooms();
-    this.connectRooms();
-    this.applyToGrid();
+    while (attempts < maxAttempts) {
+      this.rooms = [];
+      this.corridors = [];
+      this.grid = Array(this.height).fill().map(() => Array(this.width).fill(0));
 
-    return {
-      grid: this.grid,
-      rooms: this.rooms,
-      corridors: this.corridors
-    };
+      if (this.generateRooms()) {
+        this.connectRooms();
+        this.assignRoomTypes();
+        this.applyToGrid();
+
+        return {
+          grid: this.grid,
+          rooms: this.rooms,
+          corridors: this.corridors
+        };
+      }
+
+      attempts++;
+    }
+
+    throw new Error('Failed to generate dungeon with minimum required rooms after multiple attempts');
   }
 
-  generateRooms(attempts = 50) {
-    for (let i = 0; i < attempts; i++) {
-      const minSize = 5;
-      const maxSize = 10;
+  generateRooms() {
+    const minRooms = 5;
+    const maxRooms = 10;
+    const maxAttempts = 200;
+    let totalAttempts = 0;
 
+    // Clear any existing rooms
+    this.rooms = [];
+
+    // Define minimum and maximum room sizes
+    const minSize = 4;  // Smaller minimum size
+    const maxSize = 6;  // Smaller maximum size
+
+    // Calculate grid divisions for better room distribution
+    const gridDivisions = 3;
+    const sectionWidth = Math.floor((this.width - 10) / gridDivisions);  // More padding
+    const sectionHeight = Math.floor((this.height - 10) / gridDivisions); // More padding
+
+    // Place entrance room in top-left section
+    const entranceMinSize = Room.getMinSize(RoomType.ENTRANCE);
+    const entranceRoom = new Room(2, 2, entranceMinSize.width, entranceMinSize.height);
+    entranceRoom.setType(RoomType.ENTRANCE);
+    this.rooms.push(entranceRoom);
+
+    // Create sections, excluding the entrance section
+    const sections = [];
+    for (let y = 0; y < gridDivisions; y++) {
+      for (let x = 0; x < gridDivisions; x++) {
+        sections.push({ x, y }); // Include all sections for more placement opportunities
+      }
+    }
+
+    // Shuffle sections for random placement order
+    sections.sort(() => Math.random() - 0.5);
+
+    // First phase: Try to place at least one room in each section
+    for (const section of sections) {
+      if (this.rooms.length >= maxRooms) break;
+
+      let placed = false;
+      let sectionAttempts = 0;
+      const maxSectionAttempts = 20; // Increased attempts per section
+
+      while (!placed && sectionAttempts < maxSectionAttempts) {
+        const width = minSize + Math.floor(Math.random() * (Math.min(maxSize, sectionWidth - 4) - minSize));
+        const height = minSize + Math.floor(Math.random() * (Math.min(maxSize, sectionHeight - 4) - minSize));
+
+        const sectionX = 2 + (section.x * sectionWidth);
+        const sectionY = 2 + (section.y * sectionHeight);
+
+        // Add some randomness to room placement within section
+        const x = sectionX + 2 + Math.floor(Math.random() * (sectionWidth - width - 4));
+        const y = sectionY + 2 + Math.floor(Math.random() * (sectionHeight - height - 4));
+
+        const newRoom = new Room(x, y, width, height);
+
+        // Skip if trying to place in entrance section and not the entrance room
+        if (section.x === 0 && section.y === 0 && !newRoom.type) {
+          sectionAttempts++;
+          continue;
+        }
+
+        if (this.canPlaceRoom(newRoom)) {
+          this.rooms.push(newRoom);
+          placed = true;
+        }
+
+        sectionAttempts++;
+        totalAttempts++;
+      }
+    }
+
+    // Second phase: Keep trying to add rooms until we reach minRooms
+    while (this.rooms.length < minRooms && totalAttempts < maxAttempts) {
       const width = minSize + Math.floor(Math.random() * (maxSize - minSize));
       const height = minSize + Math.floor(Math.random() * (maxSize - minSize));
 
-      const x = Math.floor(Math.random() * (this.width - width - 2)) + 1;
-      const y = Math.floor(Math.random() * (this.height - height - 2)) + 1;
+      // Try to place room in any valid location
+      const x = 2 + Math.floor(Math.random() * (this.width - width - 4));
+      const y = 2 + Math.floor(Math.random() * (this.height - height - 4));
 
       const newRoom = new Room(x, y, width, height);
 
-      let overlaps = false;
-      for (const room of this.rooms) {
-        if (newRoom.intersects(room, 2)) {
-          overlaps = true;
-          break;
-        }
-      }
-
-      if (!overlaps) {
+      if (this.canPlaceRoom(newRoom)) {
         this.rooms.push(newRoom);
       }
+
+      totalAttempts++;
     }
+
+    // If we still don't have minimum rooms, try one last time with smaller rooms
+    if (this.rooms.length < minRooms) {
+      for (let i = 0; i < 20 && this.rooms.length < minRooms; i++) {
+        const width = 4;  // Minimum size
+        const height = 4; // Minimum size
+        const x = 2 + Math.floor(Math.random() * (this.width - width - 4));
+        const y = 2 + Math.floor(Math.random() * (this.height - height - 4));
+
+        const newRoom = new Room(x, y, width, height);
+        if (this.canPlaceRoom(newRoom)) {
+          this.rooms.push(newRoom);
+        }
+      }
+    }
+
+    if (this.rooms.length < minRooms) {
+      console.error(`Failed to generate minimum number of rooms. Got ${this.rooms.length}, needed ${minRooms}`);
+      return false;
+    }
+
+    return true;
+  }
+
+  canPlaceRoom(newRoom) {
+    // Check bounds
+    if (!this.isRoomInBounds(newRoom)) {
+      return false;
+    }
+
+    // Check overlaps with existing rooms (including padding)
+    for (const room of this.rooms) {
+      if (newRoom.intersects(room, 2)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  isRoomInBounds(room) {
+    return room.x >= 1 &&
+      room.y >= 1 &&
+      room.x + room.width < this.width - 1 &&
+      room.y + room.height < this.height - 1;
   }
 
   connectRooms() {
@@ -437,32 +566,25 @@ export class DungeonGenerator {
   }
 
   assignRoomTypes() {
-    // Sort rooms by size
-    const sortedRooms = [...this.rooms].sort((a, b) =>
-      (b.width * b.height) - (a.width * a.height));
+    // Sort rooms by size (excluding the entrance room which is already assigned)
+    const sortedRooms = [...this.rooms]
+      .filter(room => room.type !== RoomType.ENTRANCE)
+      .sort((a, b) => (b.width * b.height) - (a.width * a.height));
 
     // Assign types based on size and position
     sortedRooms[0].setType(RoomType.LARGE_HALL);
 
-    // Find the room closest to top-left for entrance
-    const topLeftRoom = this.rooms.reduce((closest, room) => {
-      const distance = Math.sqrt(room.x * room.x + room.y * room.y);
-      if (!closest || distance < Math.sqrt(closest.x * closest.x + closest.y * closest.y)) {
-        return room;
-      }
-      return closest;
-    });
-    topLeftRoom.setType(RoomType.ENTRANCE);
-
     // Find the room farthest from entrance for boss
-    const farthestRoom = this.rooms.reduce((farthest, room) => {
+    const entranceRoom = this.rooms.find(room => room.type === RoomType.ENTRANCE);
+    const farthestRoom = sortedRooms.reduce((farthest, room) => {
+      if (room.type === RoomType.LARGE_HALL) return farthest;
       const distance = Math.sqrt(
-        Math.pow(room.x - topLeftRoom.x, 2) +
-        Math.pow(room.y - topLeftRoom.y, 2)
+        Math.pow(room.x - entranceRoom.x, 2) +
+        Math.pow(room.y - entranceRoom.y, 2)
       );
       if (!farthest || distance > Math.sqrt(
-        Math.pow(farthest.x - topLeftRoom.x, 2) +
-        Math.pow(farthest.y - topLeftRoom.y, 2)
+        Math.pow(farthest.x - entranceRoom.x, 2) +
+        Math.pow(farthest.y - entranceRoom.y, 2)
       )) {
         return room;
       }
