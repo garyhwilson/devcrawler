@@ -62,18 +62,199 @@ export class DungeonGenerator {
       const roomA = sortedRooms[i];
       const roomB = sortedRooms[i + 1];
 
-      const connection = this.findBestConnection(roomA, roomB);
-      if (!connection) continue;
-
-      const { corridor, doorPoints } = connection;
-
-      // Add corridor and doors
-      this.corridors.push(corridor);
-      doorPoints.forEach(point => {
-        this.grid[point.y][point.x] = 2; // door
-      });
+      // Connect the rooms with a single corridor
+      this.createSingleCorridor(roomA, roomB);
     }
   }
+
+  createSingleCorridor(roomA, roomB) {
+    const startPoint = this.findBestExitPoint(roomA, roomB);
+    const endPoint = this.findBestExitPoint(roomB, roomA);
+
+    // Create the corridor
+    const corridor = new Corridor(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+
+    // Remove points that are inside rooms
+    corridor.path = corridor.path.filter(point =>
+      !this.isPointInAnyRoom(point.x, point.y)
+    );
+
+    // Only proceed if corridor is long enough
+    if (corridor.path.length < 4) return;
+
+    // Find the actual intersection points with rooms
+    const startDoor = this.findDoorPoint(corridor.path[0], roomA);
+    const endDoor = this.findDoorPoint(corridor.path[corridor.path.length - 1], roomB);
+
+    if (!startDoor || !endDoor) return;
+
+    // Add the corridor to the grid
+    corridor.path.forEach(point => {
+      this.grid[point.y][point.x] = 1; // floor
+    });
+
+    // Add the doors
+    this.grid[startDoor.y][startDoor.x] = 2; // door
+    this.grid[endDoor.y][endDoor.x] = 2; // door
+
+    this.corridors.push(corridor);
+  }
+
+  findBestExitPoint(room, targetRoom) {
+    const roomCenter = room.getCenter();
+    const targetCenter = targetRoom.getCenter();
+
+    // Determine which edge to use
+    let x = roomCenter.x < targetCenter.x ?
+      room.x + room.width : // Use right edge
+      room.x;               // Use left edge
+
+    let y = roomCenter.y < targetCenter.y ?
+      room.y + room.height : // Use bottom edge
+      room.y;                // Use top edge
+
+    // Stay within room bounds
+    x = Math.max(room.x, Math.min(x, room.x + room.width));
+    y = Math.max(room.y, Math.min(y, room.y + room.height));
+
+    return { x, y };
+  }
+
+  findDoorPoint(corridorPoint, room) {
+    // Check if the point is adjacent to the room
+    const adjacentPoints = [
+      { x: corridorPoint.x - 1, y: corridorPoint.y },
+      { x: corridorPoint.x + 1, y: corridorPoint.y },
+      { x: corridorPoint.x, y: corridorPoint.y - 1 },
+      { x: corridorPoint.x, y: corridorPoint.y + 1 }
+    ];
+
+    // Find the point that intersects with the room
+    for (const point of adjacentPoints) {
+      if (this.isPointInRoom(point, room)) {
+        return corridorPoint; // The corridor point becomes the door
+      }
+    }
+
+    return null;
+  }
+
+  isPointInRoom(point, room) {
+    return point.x >= room.x &&
+      point.x < room.x + room.width &&
+      point.y >= room.y &&
+      point.y < room.y + room.height;
+  }
+
+  mergeIntersectingCorridors(corridors) {
+    const merged = [];
+    const used = new Set();
+
+    for (let i = 0; i < corridors.length; i++) {
+      if (used.has(i)) continue;
+
+      let currentCorridor = { ...corridors[i] };
+      used.add(i);
+
+      let mergedAny;
+      do {
+        mergedAny = false;
+        for (let j = 0; j < corridors.length; j++) {
+          if (used.has(j)) continue;
+
+          if (this.doCorridorsIntersect(currentCorridor, corridors[j])) {
+            currentCorridor = this.mergeTwoCorridors(currentCorridor, corridors[j]);
+            used.add(j);
+            mergedAny = true;
+          }
+        }
+      } while (mergedAny);
+
+      merged.push(currentCorridor);
+    }
+
+    return merged;
+  }
+
+  doCorridorsIntersect(corridorA, corridorB) {
+    return corridorA.path.some(pointA =>
+      corridorB.path.some(pointB =>
+        pointA.x === pointB.x && pointA.y === pointB.y));
+  }
+
+  mergeTwoCorridors(corridorA, corridorB) {
+    // Create a set of all points to remove duplicates
+    const allPoints = new Set(
+      [...corridorA.path, ...corridorB.path].map(p => `${p.x},${p.y}`)
+    );
+
+    // Convert back to array of point objects
+    const mergedPath = Array.from(allPoints).map(str => {
+      const [x, y] = str.split(',').map(Number);
+      return { x, y };
+    });
+
+    return {
+      path: mergedPath,
+      type: 'corridor'
+    };
+  }
+
+  findValidDoorPointsForMergedCorridor(corridor) {
+    const doorPoints = [];
+
+    // For each point in the corridor
+    corridor.path.forEach(point => {
+      // Check if this point connects to any room
+      const connectedRoom = this.findConnectedRoom(point);
+      if (connectedRoom) {
+        // Verify this is a valid door location
+        if (this.isValidDoorLocation(point, corridor.path, connectedRoom)) {
+          doorPoints.push(point);
+        }
+      }
+    });
+
+    return doorPoints;
+  }
+
+  findConnectedRoom(point) {
+    return this.rooms.find(room =>
+      point.x >= room.x - 1 && point.x <= room.x + room.width &&
+      point.y >= room.y - 1 && point.y <= room.y + room.height
+    );
+  }
+
+  isValidDoorLocation(point, corridorPath, room) {
+    // Must be exactly at the room boundary
+    const isAtBoundary =
+      (point.x === room.x - 1 && point.y >= room.y && point.y < room.y + room.height) ||
+      (point.x === room.x + room.width && point.y >= room.y && point.y < room.y + room.height) ||
+      (point.y === room.y - 1 && point.x >= room.x && point.x < room.x + room.width) ||
+      (point.y === room.y + room.height && point.x >= room.x && point.x < room.x + room.width);
+
+    if (!isAtBoundary) return false;
+
+    // Check that there's actual corridor (not just another room) on the other side
+    const neighbors = this.getAdjacentPoints(point);
+    const hasCorridorConnection = neighbors.some(n =>
+      corridorPath.some(p => p.x === n.x && p.y === n.y) &&
+      !this.isPointInAnyRoom(n.x, n.y)
+    );
+
+    return hasCorridorConnection;
+  }
+
+  createCorridorBetweenRooms(roomA, roomB) {
+    const startPoint = this.findClosestDoorPoint(roomA, roomB);
+    const endPoint = this.findClosestDoorPoint(roomB, roomA);
+
+    const corridor = new Corridor(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+    corridor.path = corridor.path.filter(point => !this.isPointInAnyRoom(point.x, point.y));
+
+    return corridor.path.length >= 4 ? corridor : null;
+  }
+
 
   findBestConnection(roomA, roomB) {
     // Try different connection strategies
@@ -339,13 +520,17 @@ export class DungeonGenerator {
 
   placeDoors() {
     for (const corridor of this.corridors) {
-      let startSection = corridor.path.slice(1, 4);
-      let endSection = corridor.path.slice(-4, -1);
+      // Only check the points where the corridor meets rooms
+      const startPoint = corridor.path[0];
+      const endPoint = corridor.path[corridor.path.length - 1];
 
-      for (const point of [...startSection, ...endSection]) {
-        if (this.shouldPlaceDoor(point.x, point.y)) {
-          this.grid[point.y][point.x] = 2; // door tile value
-        }
+      // Try to place doors at the ends of corridors
+      if (this.shouldPlaceDoor(startPoint.x, startPoint.y)) {
+        this.grid[startPoint.y][startPoint.x] = 2; // door tile value
+      }
+
+      if (this.shouldPlaceDoor(endPoint.x, endPoint.y)) {
+        this.grid[endPoint.y][endPoint.x] = 2; // door tile value
       }
     }
   }
@@ -355,6 +540,17 @@ export class DungeonGenerator {
 
     // The point itself must be a floor tile
     if (this.grid[y][x] !== 1) return false;
+
+    // Check if there's already a door nearby
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (this.isInBounds(nx, ny) && this.grid[ny][nx] === 2) {
+          return false; // Door too close
+        }
+      }
+    }
 
     // Check horizontal door possibility (walls on north and south)
     const horizontalDoor =

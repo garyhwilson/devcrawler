@@ -1,4 +1,3 @@
-// src/game/dungeon/Corridor.js
 export class Corridor {
   constructor(startX, startY, endX, endY) {
     this.startX = startX;
@@ -15,33 +14,16 @@ export class Corridor {
     let currentX = this.startX;
     let currentY = this.startY;
 
-    // Add starting point
-    this.path.push({ x: currentX, y: currentY });
+    // Always go horizontal first, then vertical
+    // This creates more predictable corridors
+    while (currentX !== this.endX) {
+      currentX += currentX < this.endX ? 1 : -1;
+      this.path.push({ x: currentX, y: currentY });
+    }
 
-    const horizontalFirst = Math.random() < 0.5;
-
-    if (horizontalFirst) {
-      // Go horizontal first
-      while (currentX !== this.endX) {
-        currentX += currentX < this.endX ? 1 : -1;
-        this.path.push({ x: currentX, y: currentY });
-      }
-      // Then vertical
-      while (currentY !== this.endY) {
-        currentY += currentY < this.endY ? 1 : -1;
-        this.path.push({ x: currentX, y: currentY });
-      }
-    } else {
-      // Go vertical first
-      while (currentY !== this.endY) {
-        currentY += currentY < this.endY ? 1 : -1;
-        this.path.push({ x: currentX, y: currentY });
-      }
-      // Then horizontal
-      while (currentX !== this.endX) {
-        currentX += currentX < this.endX ? 1 : -1;
-        this.path.push({ x: currentX, y: currentY });
-      }
+    while (currentY !== this.endY) {
+      currentY += currentY < this.endY ? 1 : -1;
+      this.path.push({ x: currentX, y: currentY });
     }
   }
 }
