@@ -1,16 +1,28 @@
-export default {
-	"env": {
-		"browser": true,
-		"es2021": true,
-		"node": true
-	},
-	"extends": "eslint:recommended",
-	"parserOptions": {
-		"ecmaVersion": "latest",
-		"sourceType": "module"
-	},
-	"rules": {
-		"no-console": "off",
-		"no-unused-vars": "warn"
-	}
-};
+import typescriptEslint from "@typescript-eslint/eslint-plugin"
+import tsParser from "@typescript-eslint/parser"
+
+export default [{
+    files: ["**/*.ts"],
+}, {
+    plugins: {
+        "@typescript-eslint": typescriptEslint,
+    },
+
+    languageOptions: {
+        parser: tsParser,
+        ecmaVersion: 2022,
+        sourceType: "module",
+    },
+
+    rules: {
+        "@typescript-eslint/naming-convention": ["warn", {
+            selector: "import",
+            format: ["camelCase", "PascalCase"],
+        }],
+
+        curly: "warn",
+        eqeqeq: "warn",
+        "no-throw-literal": "warn",
+        semi: ["error", "never"]
+    },
+}]

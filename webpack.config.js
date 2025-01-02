@@ -1,4 +1,4 @@
-const path = require('path');
+const path = require('path')
 
 // Common configuration for both extension and web
 const common = {
@@ -21,7 +21,7 @@ const common = {
 	resolve: {
 		extensions: ['.js']
 	}
-};
+}
 
 // Configuration for VS Code extension
 const extensionConfig = {
@@ -36,7 +36,7 @@ const extensionConfig = {
 	externals: {
 		vscode: 'commonjs vscode'
 	}
-};
+}
 
 // Configuration for web/game code
 const gameConfig = {
@@ -53,7 +53,7 @@ const gameConfig = {
 			path: require.resolve('path-browserify')
 		}
 	}
-};
+}
 
 // Export both configurations
-module.exports = [extensionConfig, gameConfig];
+module.exports = [extensionConfig, gameConfig]
